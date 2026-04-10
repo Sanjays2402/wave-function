@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wave Function Collapse</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+  
+  /* Sidebar */
+  .sidebar {
+    width: 280px;
+    background: #111118;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  
+  .logo {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #555;
+    margin-bottom: 12px;
+  }
+  
+  .ctrl-group { margin-bottom: 4px; }
+  
+  .ctrl-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 6px;
+  }
+  
+  .ctrl-group label span { color: #666; font-variant-numeric: tabular-nums; }
+  
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    outline: none;
+  }
+  
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #6366f1;
+    cursor: pointer;
+  }
+  
+  .btn-row {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .btn {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    color: #ccc;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  
+  .btn:hover { background: rgba(255,255,255,0.08); }
+  
+  .btn-primary {
+    background: #6366f1;
+    border-color: #6366f1;
+    color: #fff;
+  }
+  
+  .btn-primary:hover { background: #5558e6; }
+  
+  .legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #888;
+  }
+  
+  .legend-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  
+  .stats {
+    font-size: 13px;
+    color: #666;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .stat-val { color: #999; font-variant-numeric: tabular-nums; }
+  
+  /* Main area */
+  .main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    position: relative;
+  }
+  
+  canvas {
+    border-radius: 12px;
+    box-shadow: 0 0 60px rgba(99, 102, 241, 0.08);
+  }
+  
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    background: rgba(17, 17, 24, 0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #ccc;
+    pointer-events: none;
+    z-index: 100;
+    display: none;
+    max-width: 200px;
+  }
+  
+  .tooltip-title {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+  
+  .tooltip-entropy {
+    color: #6366f1;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">◊</div>
+    Wave Function Collapse
+  </div>
+  
+  <div>
+    <div class="section-title">Controls</div>
+    <div class="ctrl-group">
+      <label>Grid Size <span id="sizeVal">20×20</span></label>
+      <input type="range" id="gridSize" min="8" max="50" value="20">
+    </div>
+    <div class="ctrl-group">
+      <label>Speed <span id="speedVal">50ms</span></label>
+      <input type="range" id="speed" min="1" max="200" value="50">
+    </div>
+  </div>
+  
+  <div>
+    <div class="section-title">Actions</div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="autoBtn" onclick="toggleAutoPlay()">▶ Auto</button>
+      <button class="btn" onclick="stepOnce()">→ Step</button>
+    </div>
+    <div class="btn-row" style="margin-top: 8px;">
+      <button class="btn" onclick="reset()">↻ Reset</button>
+    </div>
+  </div>
+  
+  <div>
+    <div class="section-title">Tile Legend</div>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-swatch" style="background: #1a6b3c;"></div>
+        Land
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background: #1a5276;"></div>
+        Deep Water
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background: #2e86c1;"></div>
+        Water
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background: #d4ac0d;"></div>
+        Sand/Coast
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background: #229954;"></div>
+        Forest
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background: #7d8a96;"></div>
+        Uncollapsed
+      </div>
+    </div>
+  </div>
+  
+  <div>
+    <div class="section-title">Stats</div>
+    <div class="stats">
+      <div class="stat-row">Collapsed <span class="stat-val" id="statCollapsed">0</span></div>
+      <div class="stat-row">Remaining <span class="stat-val" id="statRemaining">400</span></div>
+      <div class="stat-row">Contradictions <span class="stat-val" id="statContradictions">0</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <canvas id="canvas"></canvas>
+</div>
+
+<div class="tooltip" id="tooltip">
+  <div class="tooltip-title" id="ttTitle"></div>
+  <div class="tooltip-entropy" id="ttEntropy"></div>
+  <div id="ttOptions"></div>
+</div>
+
+<script>
+// Tile types
+const TILES = {
+  DEEP_WATER: 0,
+  WATER: 1,
+  SAND: 2,
+  LAND: 3,
+  FOREST: 4
+};
+
+const TILE_NAMES = ['Deep Water', 'Water', 'Sand', 'Land', 'Forest'];
+
+const TILE_COLORS = {
+  0: '#1a5276',  // Deep Water
+  1: '#2e86c1',  // Water
+  2: '#d4ac0d',  // Sand
+  3: '#1a6b3c',  // Land
+  4: '#229954',  // Forest
+};
+
+// Adjacency rules: which tiles can be neighbors
+// Each tile maps to tiles that can be adjacent to it
+const ADJACENCY = {
+  0: [0, 1],           // Deep water: deep water, water
+  1: [0, 1, 2],        // Water: deep water, water, sand
+  2: [1, 2, 3],        // Sand: water, sand, land
+  3: [2, 3, 4],        // Land: sand, land, forest
+  4: [3, 4],           // Forest: land, forest
+};
+
+const NUM_TILES = 5;
+const DIRS = [[0,-1],[1,0],[0,1],[-1,0]]; // up, right, down, left
+
+let gridW = 20, gridH = 20;
+let cellSize;
+let grid; // grid[y][x] = Set of possible tiles
+let collapsed; // collapsed[y][x] = tile index or -1
+let autoPlaying = false;
+let autoTimer = null;
+let contradictions = 0;
+let collapsedCount = 0;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+function initGrid() {
+  grid = [];
+  collapsed = [];
+  collapsedCount = 0;
+  contradictions = 0;
+  
+  for (let y = 0; y < gridH; y++) {
+    grid[y] = [];
+    collapsed[y] = [];
+    for (let x = 0; x < gridW; x++) {
+      grid[y][x] = new Set([0, 1, 2, 3, 4]);
+      collapsed[y][x] = -1;
+    }
+  }
+}
+
+function resizeCanvas() {
+  const mainEl = document.querySelector('.main');
+  const maxW = mainEl.clientWidth - 48;
+  const maxH = mainEl.clientHeight - 48;
+  
+  cellSize = Math.floor(Math.min(maxW / gridW, maxH / gridH));
+  cellSize = Math.max(cellSize, 8);
+  cellSize = Math.min(cellSize, 40);
+  
+  canvas.width = gridW * cellSize;
+  canvas.height = gridH * cellSize;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  for (let y = 0; y < gridH; y++) {
+    for (let x = 0; x < gridW; x++) {
+      const px = x * cellSize;
+      const py = y * cellSize;
+      
+      if (collapsed[y][x] >= 0) {
+        ctx.fillStyle = TILE_COLORS[collapsed[y][x]];
+        ctx.fillRect(px, py, cellSize, cellSize);
+      } else {
+        // Uncollapsed: show entropy via brightness
+        const entropy = grid[y][x].size;
+        const brightness = 0.15 + (entropy / NUM_TILES) * 0.15;
+        ctx.fillStyle = `rgba(125, 138, 150, ${brightness})`;
+        ctx.fillRect(px, py, cellSize, cellSize);
+        
+        // Small entropy indicator
+        if (cellSize >= 16 && entropy <= 3 && entropy > 0) {
+          ctx.fillStyle = `rgba(99, 102, 241, ${0.3 + (1 - entropy/NUM_TILES) * 0.5})`;
+          const r = Math.max(2, cellSize * 0.15);
+          ctx.beginPath();
+          ctx.arc(px + cellSize/2, py + cellSize/2, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      ctx.strokeRect(px, py, cellSize, cellSize);
+    }
+  }
+  
+  updateStats();
+}
+
+function getMinEntropyCell() {
+  let minEntropy = Infinity;
+  let candidates = [];
+  
+  for (let y = 0; y < gridH; y++) {
+    for (let x = 0; x < gridW; x++) {
+      if (collapsed[y][x] >= 0) continue;
+      const e = grid[y][x].size;
+      if (e === 0) continue; // contradiction
+      if (e < minEntropy) {
+        minEntropy = e;
+        candidates = [{x, y}];
+      } else if (e === minEntropy) {
+        candidates.push({x, y});
+      }
+    }
+  }
+  
+  if (candidates.length === 0) return null;
+  // Random among lowest entropy (with slight noise for variety)
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function collapseCell(x, y) {
+  const options = [...grid[y][x]];
+  if (options.length === 0) return false;
+  
+  // Weighted random: prefer tiles that neighbors already have adjacent to them
+  const weights = options.map(t => {
+    let w = 1;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || nx >= gridW || ny < 0 || ny >= gridH) continue;
+      if (collapsed[ny][nx] >= 0) {
+        if (ADJACENCY[collapsed[ny][nx]].includes(t)) w += 2;
+      }
+    }
+    return w;
+  });
+  
+  const totalW = weights.reduce((a,b) => a + b, 0);
+  let r = Math.random() * totalW;
+  let chosen = options[0];
+  for (let i = 0; i < options.length; i++) {
+    r -= weights[i];
+    if (r <= 0) { chosen = options[i]; break; }
+  }
+  
+  grid[y][x] = new Set([chosen]);
+  collapsed[y][x] = chosen;
+  collapsedCount++;
+  
+  return true;
+}
+
+function propagate(startX, startY) {
+  const stack = [{x: startX, y: startY}];
+  
+  while (stack.length > 0) {
+    const {x, y} = stack.pop();
+    const current = grid[y][x];
+    
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || nx >= gridW || ny < 0 || ny >= gridH) continue;
+      if (collapsed[ny][nx] >= 0) continue;
+      
+      const neighbor = grid[ny][nx];
+      const before = neighbor.size;
+      
+      // Determine what tiles are valid for neighbor
+      const allowed = new Set();
+      for (const t of current) {
+        for (const adj of ADJACENCY[t]) {
+          allowed.add(adj);
+        }
+      }
+      
+      // Intersect
+      for (const t of [...neighbor]) {
+        if (!allowed.has(t)) {
+          neighbor.delete(t);
+        }
+      }
+      
+      if (neighbor.size === 0) {
+        contradictions++;
+        return false;
+      }
+      
+      if (neighbor.size < before) {
+        stack.push({x: nx, y: ny});
+      }
+    }
+  }
+  
+  return true;
+}
+
+function stepOnce() {
+  const cell = getMinEntropyCell();
+  if (!cell) {
+    if (autoPlaying) toggleAutoPlay();
+    return false;
+  }
+  
+  if (!collapseCell(cell.x, cell.y)) {
+    return false;
+  }
+  
+  propagate(cell.x, cell.y);
+  draw();
+  return true;
+}
+
+function toggleAutoPlay() {
+  autoPlaying = !autoPlaying;
+  const btn = document.getElementById('autoBtn');
+  
+  if (autoPlaying) {
+    btn.textContent = '⏸ Pause';
+    btn.classList.add('btn-primary');
+    autoStep();
+  } else {
+    btn.textContent = '▶ Auto';
+    if (autoTimer) clearTimeout(autoTimer);
+  }
+}
+
+function autoStep() {
+  if (!autoPlaying) return;
+  
+  const success = stepOnce();
+  if (!success) {
+    autoPlaying = false;
+    document.getElementById('autoBtn').textContent = '▶ Auto';
+    return;
+  }
+  
+  const speed = parseInt(document.getElementById('speed').value);
+  autoTimer = setTimeout(autoStep, speed);
+}
+
+function reset() {
+  if (autoPlaying) toggleAutoPlay();
+  gridW = gridH = parseInt(document.getElementById('gridSize').value);
+  initGrid();
+  resizeCanvas();
+  draw();
+}
+
+function updateStats() {
+  const total = gridW * gridH;
+  document.getElementById('statCollapsed').textContent = collapsedCount;
+  document.getElementById('statRemaining').textContent = total - collapsedCount;
+  document.getElementById('statContradictions').textContent = contradictions;
+}
+
+// Controls
+document.getElementById('gridSize').addEventListener('input', e => {
+  document.getElementById('sizeVal').textContent = `${e.target.value}×${e.target.value}`;
+});
+
+document.getElementById('gridSize').addEventListener('change', () => reset());
+
+document.getElementById('speed').addEventListener('input', e => {
+  document.getElementById('speedVal').textContent = `${e.target.value}ms`;
+});
+
+// Tooltip
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / cellSize);
+  const y = Math.floor((e.clientY - rect.top) / cellSize);
+  
+  if (x < 0 || x >= gridW || y < 0 || y >= gridH) {
+    document.getElementById('tooltip').style.display = 'none';
+    return;
+  }
+  
+  const tip = document.getElementById('tooltip');
+  tip.style.display = 'block';
+  tip.style.left = (e.clientX + 16) + 'px';
+  tip.style.top = (e.clientY + 16) + 'px';
+  
+  if (collapsed[y][x] >= 0) {
+    document.getElementById('ttTitle').textContent = TILE_NAMES[collapsed[y][x]];
+    document.getElementById('ttEntropy').textContent = 'Entropy: 0 (collapsed)';
+    document.getElementById('ttOptions').textContent = '';
+  } else {
+    const opts = [...grid[y][x]];
+    document.getElementById('ttTitle').textContent = `Cell (${x}, ${y})`;
+    document.getElementById('ttEntropy').textContent = `Entropy: ${opts.length}`;
+    document.getElementById('ttOptions').textContent = 'Options: ' + opts.map(t => TILE_NAMES[t]).join(', ');
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  document.getElementById('tooltip').style.display = 'none';
+});
+
+// Click to manually collapse
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / cellSize);
+  const y = Math.floor((e.clientY - rect.top) / cellSize);
+  
+  if (x < 0 || x >= gridW || y < 0 || y >= gridH) return;
+  if (collapsed[y][x] >= 0) return;
+  
+  collapseCell(x, y);
+  propagate(x, y);
+  draw();
+});
+
+window.addEventListener('resize', () => { resizeCanvas(); draw(); });
+
+reset();
+</script>
+</body>
+</html>
